@@ -3,7 +3,11 @@ This repo holds the implementations for the voxel-related ops for [the TensorFlo
 
 Development is currently in progress!
 
-## TensorFlow Custom Op
+----
+
+The following sections of the README are the same as the [original custom-op repository](https://github.com/tensorflow/custom-op).
+
+# TensorFlow Custom Op
 This is a guide for users who want to write custom c++ op for TensorFlow and distribute the op as a pip package. This repository serves as both a working example of the op building and packaging process, as well as a template/starting point for writing your own ops. The way this repository is set up allow you to build your custom ops from TensorFlow's pip package instead of building TensorFlow from scratch. This guarantee that the shared library you build will be binary compatible with TensorFlow's pip packages.
 
 This guide currently supports Ubuntu and Windows custom ops, and it includes examples for both cpu and gpu ops.
