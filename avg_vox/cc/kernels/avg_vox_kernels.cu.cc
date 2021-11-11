@@ -10,10 +10,9 @@ namespace functor {
 
 typedef Eigen::GpuDevice GPUDevice;
 
-__global__ void AvgVoxForwardCudaKernel(const int size, const T* in, T* out) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
+__global__ void AvgVoxForwardCudaKernel() {
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < 0;
        i += blockDim.x * gridDim.x) {
-    // out[i] = 2 * ldg(in + i);
   }
 }
 

@@ -6,7 +6,7 @@ namespace functor {
 
 template <typename Device>
 struct AvgVoxForwardFunctor {
-  void operator()(const Device& d, const float* in, float* out);
+  void operator()(const Device& d);
 };
 
 }  // namespace functor

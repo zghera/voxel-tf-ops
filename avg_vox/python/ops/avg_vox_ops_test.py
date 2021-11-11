@@ -16,9 +16,9 @@
 import tensorflow as tf
 
 try:
-  from avg_vox.python.ops import avg_vox_ops
+  from avg_vox.python.ops import avg_voxelize_forward
 except ImportError:
-  import avg_vox_ops
+  from avg_vox_ops import avg_voxelize_forward
 
 
 class AvgVoxTest(tf.test.TestCase):
@@ -37,6 +37,7 @@ class AvgVoxTest(tf.test.TestCase):
          [1, 2, 3, 4],
          [1, 2, 3, 4]],
       ], dtype=tf.float32)
+      # [B, 3, N] = [2, 3, 4]
       coords = tf.constant([
         [[1, 2, 3, 4],
          [1, 2, 3, 4],
@@ -47,8 +48,7 @@ class AvgVoxTest(tf.test.TestCase):
 
       ], dtype=tf.int32)
       resolution = tf.constant(4)
-      out, ind, cnt = avg_vox_ops.avg_voxelize_forward(
-          features, coords, resolution)
+      out, ind, cnt = avg_voxelize_forward(features, coords, resolution)
     print(f"out={out}")
     print(f"ind={ind}")
     print(f"cnt={cnt}")
