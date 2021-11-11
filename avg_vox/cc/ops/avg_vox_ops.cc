@@ -1,28 +1,36 @@
-/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-==============================================================================*/
-
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
 
 using namespace tensorflow;
 
-REGISTER_OP("TimeTwo")
-    .Attr("T: {int32, float}")
-    .Input("in: T")
-    .Output("out: T")
+REGISTER_OP("AvgVoxForward")
+    .Input("features: float")
+    .Input("coords: int32")
+    .Input("resolution: int32")
+    .Output("out: float")
+    .Output("ind: int32");
+    .Output("cnt: int32");
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
-      c->set_output(0, c->input(0));
+      // Input rank assertions
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &input));
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 3, &input));
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 0, &input));
+
+      // Get (resolution ** 3) as a dimension handle
+      DimensionHandle s;
+      TF_RETURN_IF_ERROR(c->MakeDimForScalarInput(2, &s));
+      TF_RETURN_IF_ERROR(c->Multiply(s, s, &s));
+      TF_RETURN_IF_ERROR(c->Multiply(s, s, &s));
+
+      // Specifying output shapes
+      ShapeHandle outShape = c->MakeShape(
+          {c->dim(c->input(0),0), c->Dim(c->input(0),1), s});
+      c->set_output(0, outShape);
+      c->set_output(1, c->Matrix(c->dim(c->input(0),0),
+                                 c->dim(c->input(0),2) ));
+      c->set_output(2, c->Matrix(c->dim(c->input(0),0), s));
+
       return Status::OK();
     });
+
+// REGISTER_OP("AvgVoxBackward")

@@ -1,18 +1,15 @@
-// kernel_example.h
-#ifndef KERNEL_TIME_TWO_H_
-#define KERNEL_TIME_TWO_H_
+#ifndef KERNEL_AVG_VOX_H_
+#define KERNEL_AVG_VOX_H_
 
 namespace tensorflow {
-
 namespace functor {
 
-template <typename Device, typename T>
-struct TimeTwoFunctor {
-  void operator()(const Device& d, int size, const T* in, T* out);
+template <typename Device>
+struct AvgVoxForwardFunctor {
+  void operator()(const Device& d, const float* in, float* out);
 };
 
 }  // namespace functor
-
 }  // namespace tensorflow
 
-#endif //KERNEL_TIME_TWO_H_
+#endif // KERNEL_AVG_VOX_H_

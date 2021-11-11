@@ -12,31 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""Tests for time_two ops."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Tests for avg_vox ops."""
+import tensorflow as tf
 
-import numpy as np
-
-from tensorflow.python.framework import ops
-from tensorflow.python.platform import test
-from tensorflow.python.framework import test_util
 try:
-  from tensorflow_time_two.python.ops import time_two_ops
+  from avg_vox.python.ops import avg_vox_ops
 except ImportError:
-  import time_two_ops
+  import avg_vox_ops
 
 
-class TimeTwoTest(test.TestCase):
+class AvgVoxTest(tf.test.TestCase):
+  def test_avg_voxelize_forward(self):
+    with tf.device("/device:GPU:0"):
+      # [B, C, N] = [2, 5, 4]
+      features = tf.constant([
+        [[1, 2, 3, 4],
+         [1, 2, 3, 4],
+         [1, 2, 3, 4],
+         [1, 2, 3, 4],
+         [1, 2, 3, 4]],
+        [[1, 2, 3, 4],
+         [1, 2, 3, 4],
+         [1, 2, 3, 4],
+         [1, 2, 3, 4],
+         [1, 2, 3, 4]],
+      ], dtype=tf.float32)
+      coords = tf.constant([
+        [[1, 2, 3, 4],
+         [1, 2, 3, 4],
+         [1, 2, 3, 4]],
+        [[1, 2, 3, 4],
+         [1, 2, 3, 4],
+         [1, 2, 3, 4]],
 
-  @test_util.run_gpu_only
-  def testTimeTwo(self):
-    with self.test_session():
-      with ops.device("/gpu:0"):
-        self.assertAllClose(
-            time_two_ops.time_two([[1, 2], [3, 4]]), np.array([[2, 4], [6, 8]]))
+      ], dtype=tf.int32)
+      resolution = tf.constant(4)
+      out, ind, cnt = avg_vox_ops.avg_voxelize_forward(
+          features, coords, resolution)
+    print(f"out={out}")
+    print(f"ind={ind}")
+    print(f"cnt={cnt}")
 
 
-if __name__ == '__main__':
-  test.main()
+if __name__ == "__main__":
+  tf.test.main()
