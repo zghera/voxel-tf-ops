@@ -21,7 +21,7 @@ VOX_TARGET_LIB = avg_vox/python/ops/_avg_vox_ops.so
 vox_gpu_only: $(VOX_GPU_ONLY_TARGET_LIB)
 
 $(VOX_GPU_ONLY_TARGET_LIB): $(VOX_CU_SRCS)
-	$(NVCC) -std=c++11 -c -o $@ $^  $(TF_CFLAGS) -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -DNDEBUG --expt-relaxed-constexpr
+	$(NVCC) -std=c++11 -c -o $@ $^  $(TF_CFLAGS) -Iutils -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -DNDEBUG --expt-relaxed-constexpr
 
 vox_op: $(VOX_TARGET_LIB)
 $(VOX_TARGET_LIB): $(VOX_CPP_SRCS) $(VOX_GPU_ONLY_TARGET_LIB)
@@ -38,7 +38,7 @@ DEVOX_TARGET_LIB = trilinear_devox/python/ops/_trilinear_devox_ops.so
 devox_gpu_only: $(DEVOX_GPU_ONLY_TARGET_LIB)
 
 $(DEVOX_GPU_ONLY_TARGET_LIB): $(DEVOX_CU_SRCS)
-	$(NVCC) -std=c++11 -c -o $@ $^  $(TF_CFLAGS) -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -DNDEBUG --expt-relaxed-constexpr
+	$(NVCC) -std=c++11 -c -o $@ $^  $(TF_CFLAGS) -Iutils -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -DNDEBUG --expt-relaxed-constexpr
 
 devox_op: $(DEVOX_TARGET_LIB)
 $(DEVOX_TARGET_LIB): $(DEVOX_CPP_SRCS) $(DEVOX_GPU_ONLY_TARGET_LIB)
