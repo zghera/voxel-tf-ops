@@ -14,6 +14,7 @@
 # ============================================================================
 """avg_vox ops in python."""
 
+from pathlib import Path
 import tensorflow as tf
 
 from tensorflow.python.framework import ops
@@ -28,7 +29,8 @@ from tensorflow.python.framework import ops
 
 __all__ = ["avg_voxelize_forward"]
 
-avg_vox_ops = tf.load_op_library("./_avg_vox_ops.so")
+library_file_path = str((Path(__file__).parent / "_avg_vox_ops.so").resolve())
+avg_vox_ops = tf.load_op_library(library_file_path)
 avg_voxelize_forward = avg_vox_ops.avg_vox_forward
 # avg_voxelize_backward = avg_vox_ops.avg_vox_backward
 

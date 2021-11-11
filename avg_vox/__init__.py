@@ -14,6 +14,4 @@
 # ==============================================================================
 """Average Voxelization TensorFlow GPU op."""
 
-from __future__ import absolute_import
-
-from avg_vox.python.ops.avg_vox_ops import avg_vox
+from avg_vox.python.ops.avg_vox_ops import *
