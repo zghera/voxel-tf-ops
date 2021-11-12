@@ -11,128 +11,64 @@ namespace tensorflow {
 
 typedef Eigen::GpuDevice GPUDevice;
 
-/*Function: Get how many points in each voxel grid.
-  Args:
-    b      : batch size
-    n      : number of points
-    r      : voxel resolution
-    r2     : = r * r
-    r3     : s, voxel cube size = r ** 3
-    coords : coords of each point, IntTensor[b, 3, n]
-    ind    : voxel index of each point, IntTensor[b, n]
-    cnt    : #points in each voxel index, IntTensor[b, s]
-  Note: Slight adaptation from original implementation.
-*/
-__global__ void GridStatsKernel(int b, int n, int r, int r2, int r3,
-                                const int* coords, int* ind, int* cnt) {
-  int batch_index = blockIdx.x;
-  int stride = blockDim.x;
-  int index = threadIdx.x;
-  coords += batch_index * n * 3;
-  ind += batch_index * n;
-  cnt += batch_index * r3;
-
-  for (int i = index; i < n; i += stride) {
-    ind[i] = coords[i] * r2 + coords[i + n] * r + coords[i + n + n];
-    if (ind[i] < r3) {
-      atomicAdd(cnt + ind[i], 1);
-    }
-  }
-  __syncthreads();
-}
-
-/*Function: Average pool voxelization (forward).
+/*Function: Trilinear devoxlization (forward).
   Args:
     b   : batch size
     c   : #channels
     n   : number of points
-    s   : voxel cube size = voxel resolution ** 3
-    ind : voxel index of each point, IntTensor[b, n]
-    cnt : #points in each voxel index, IntTensor[b, s]
-    feat: features, FloatTensor[b, c, n]
-    out : outputs, FloatTensor[b, c, s]
-  Note: Same as the original implementation.
+    r   : voxel resolution
+    r2  : r ** 2
+    r3  : r ** 3
+    coords : the coordinates of points, FloatTensor[b, 3, n]
+    feat   : features, FloatTensor[b, c, r3]
+    inds   : the voxel indices of point cube, IntTensor[b, 8, n]
+    wgts   : weight for trilinear interpolation, FloatTensor[b, 8, n]
+    outs   : outputs, FloatTensor[b, c, n]
+  Note: 
 */
-__global__ void AvgVoxForwardKernel(int b, int c, int n, int s,
-                                    const int* ind, const int* cnt,
-                                    const float* feat, float* out) {
-  int batch_index = blockIdx.x;
-  int stride = blockDim.x;
-  int index = threadIdx.x;
-  ind += batch_index * n;
-  feat += batch_index * c * n;
-  out += batch_index * c * s;
-  cnt += batch_index * s;
-  for (int i = index; i < n; i += stride) {
-    int pos = ind[i];
-    int cur_cnt = cnt[pos];
-    if (cur_cnt > 0) {
-      float div_cur_cnt = 1.0 / static_cast<float>(cur_cnt);
-      for (int j = 0; j < c; j++) {
-        atomicAdd(out + j * s + pos, feat[j * n + i] * div_cur_cnt);
-      }
-    }
-  }
-  __syncthreads();
+__global__ void TrilinearDevoxForwardKernel(
+  int b, int c, int n, int r, int r2, int r3, bool is_training,
+  const float* coords, const float* feat, int* inds, float* wgts, float* outs) {
 }
 
-/*Function: Average pool voxelization (backward).
+/*Function: Trilinear devoxlization (backward).
   Args:
-    b      : batch size
-    c      : #channels
-    n      : number of points
-    r3     : voxel cube size = voxel resolution ** 3
-    ind    : voxel index of each point, IntTensor[b, n]
-    cnt    : #points in each voxel index, IntTensor[b, s]
-    grad_y : grad outputs, FloatTensor[b, c, s]
-    grad_x : grad inputs, FloatTensor[b, c, n]
+    b   : batch size
+    c   : #channels
+    n   : number of points
+    r3  : voxel cube size = voxel resolution ** 3
+    inds   : the voxel indices of point cube, IntTensor[b, 8, n]
+    wgts   : weight for trilinear interpolation, FloatTensor[b, 8, n]
+    grad_y : grad outputs, FloatTensor[b, c, n]
+    grad_x : grad inputs, FloatTensor[b, c, r3]
   Note: Same as the original implementation.
 */
-__global__ void AvgVoxBackwardKernel(int b, int c, int n, int r3,
-                                    const int* ind, const int* cnt,
+__global__ void TrilinearDevoxBackwardKernel(int b, int c, int n, int r3,
+                                    const int* inds, const float* wgts,
                                     const float* grad_y, float* grad_x) {
-  int batch_index = blockIdx.x;
-  int stride = blockDim.x;
-  int index = threadIdx.x;
-  ind += batch_index * n;
-  grad_x += batch_index * c * n;
-  grad_y += batch_index * c * r3;
-  cnt += batch_index * r3;
-  for (int i = index; i < n; i += stride) {
-    int pos = ind[i];
-    int cur_cnt = cnt[pos];
-    if (cur_cnt > 0) {
-      float div_cur_cnt = 1.0 / static_cast<float>(cur_cnt);
-      for (int j = 0; j < c; j++) {
-        atomicAdd(grad_x + j * n + i, grad_y[j * r3 + pos] * div_cur_cnt);
-      }
-    }
-  }
 }
 
-void AvgVoxForwardKernelLauncher(const GPUDevice& d,
-    int b, int c, int n, int r, int r2, int r3,
-    const int* coords, const float* features, int* ind, int* cnt, float* out) {
-  cudaMemset(ind, 0, b*n*sizeof(ind));
-  cudaMemset(cnt, 0, b*r3*sizeof(cnt));
-  cudaMemset(out, 0, b*c*r3*sizeof(out));
+void TrilinearDevoxForwardKernelLauncher(const GPUDevice& d,
+    int b, int c, int n, int r, int r2, int r3, bool is_training,
+    const float* coords, const float* features,
+    int* indices, float* weights, float* outputs) {
+  cudaMemset(indices, 0, b*8*n*sizeof(indices));
+  cudaMemset(weights, 0, b*8*sizeof(weights));
+  cudaMemset(outputs, 0, b*c*n*sizeof(outputs));
 
-  TF_CHECK_OK(GpuLaunchKernel(GridStatsKernel,
+  TF_CHECK_OK(TrilinearDevoxForwardKernel(GridStatsKernel,
       b, optimal_num_threads(n), 0, d.stream(),
-      b, n, r, r2, r3, coords, ind, cnt));
-  TF_CHECK_OK(GpuLaunchKernel(AvgVoxForwardKernel,
-    b, optimal_num_threads(n), 0, d.stream(),
-    b, c, n, r3, ind, cnt, features, out));
+      b, c, n, r, r2, r3, coords, features, indices, weights, outputs));
 }
 
-void AvgVoxBackwardKernelLauncher(const GPUDevice& d,
-    int b, int c, int n, int r3,
-    const int* ind, const int* cnt, const float* grad_dy, float* grad_dx) {
-  cudaMemset(grad_dx, 0, b*c*n*sizeof(grad_dx));
+void TrilinearDevoxBackwardKernelLauncher(const GPUDevice& d,
+    int b, int c, int n, int r3, const int* indices, const float* weights,
+    const float* grad_dy, float* grad_dx) {
+  cudaMemset(grad_dx, 0, b*c*r3*sizeof(grad_dx));
 
-  TF_CHECK_OK(GpuLaunchKernel(AvgVoxBackwardKernel,
+  TF_CHECK_OK(GpuLaunchKernel(TrilinearDevoxBackwardKernel,
     b, optimal_num_threads(n), 0, d.stream(),
-    b, c, n, r3, ind, cnt, grad_dy, grad_dx));
+    b, c, n, r3, indices, weights, grad_dy, grad_dx));
 }
 
 }  // end namespace tensorflow
