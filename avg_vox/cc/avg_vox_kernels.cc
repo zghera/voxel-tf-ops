@@ -23,10 +23,10 @@ REGISTER_OP("AvgVoxForward")
     .Output("cnt: int32")
     .SetShapeFn([](InferenceContext* c) {
       // Input rank assertions
-      ShapeHandle input;
-      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &input));
-      TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 3, &input));
-      TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 0, &input));
+      ShapeHandle features;
+      ShapeHandle coords;
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &features));
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 3, &coords));
 
       // Get (resolution ** 3) to set some of the output shapes
       int resolution;
@@ -35,11 +35,10 @@ REGISTER_OP("AvgVoxForward")
 
       // Specifying output shapes
       ShapeHandle out_shape = c->MakeShape(
-          {c->Dim(c->input(0),0), c->Dim(c->input(0),1), r3});
+          {c->Dim(features,0), c->Dim(features,1), r3});
       c->set_output(0, out_shape);
-      c->set_output(1, c->Matrix(c->Dim(c->input(0),0),
-                                 c->Dim(c->input(0),2) ));
-      c->set_output(2, c->Matrix(c->Dim(c->input(0),0), r3));
+      c->set_output(1, c->Matrix(c->Dim(features,0), c->Dim(features,2)));
+      c->set_output(2, c->Matrix(c->Dim(features,0), r3));
 
       return Status::OK();
 });
@@ -63,8 +62,8 @@ class AvgVoxForwardOp : public OpKernel {
     const Tensor& coords = context->input(1);
 
     // Get shape and resolution integers
-    int batches   = features.shape().dim_size(0);
-    int channels  = features.shape().dim_size(1);;
+    int batches    = features.shape().dim_size(0);
+    int channels   = features.shape().dim_size(1);;
     int num_points = features.shape().dim_size(2);;
     int r2 = resolution_ * resolution_;
     int r3 = r2 * resolution_;
@@ -91,7 +90,8 @@ class AvgVoxForwardOp : public OpKernel {
 
 // Register the GPU kernels.
 #ifdef GOOGLE_CUDA
-REGISTER_KERNEL_BUILDER(Name("AvgVoxForward").Device(DEVICE_GPU),AvgVoxForwardOp);
+REGISTER_KERNEL_BUILDER(Name("AvgVoxForward").Device(DEVICE_GPU),
+                        AvgVoxForwardOp);
 #endif  // GOOGLE_CUDA
 
 // -----------------------------------------------------------------------
@@ -109,9 +109,9 @@ REGISTER_OP("AvgVoxBackward")
       TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 2, &input));
 
       // Specifying output shapes
-      ShapeHandle out_shape = c->MakeShape({
+      ShapeHandle grad_dx_shape = c->MakeShape({
         c->Dim(c->input(0),0), c->Dim(c->input(0),1), c->Dim(c->input(1),1)});
-      c->set_output(0, out_shape);
+      c->set_output(0, grad_dx_shape);
 
       return Status::OK();
 });
@@ -132,8 +132,8 @@ class AvgVoxBackwardOp : public OpKernel {
     const Tensor& cnt = context->input(2);
 
     // Get shape and resolution integers
-    int batches   = grad_dy.shape().dim_size(0);
-    int channels  = grad_dy.shape().dim_size(1);
+    int batches    = grad_dy.shape().dim_size(0);
+    int channels   = grad_dy.shape().dim_size(1);
     int r3         = grad_dy.shape().dim_size(2);
     int num_points = ind.shape().dim_size(1);
 
@@ -153,7 +153,8 @@ class AvgVoxBackwardOp : public OpKernel {
 
 // Register the GPU kernels.
 #ifdef GOOGLE_CUDA
-REGISTER_KERNEL_BUILDER(Name("AvgVoxBackward").Device(DEVICE_GPU),AvgVoxBackwardOp);
+REGISTER_KERNEL_BUILDER(Name("AvgVoxBackward").Device(DEVICE_GPU),
+                        AvgVoxBackwardOp);
 #endif  // GOOGLE_CUDA
 
 
