@@ -15,27 +15,22 @@
 """avg_vox ops in python."""
 
 from pathlib import Path
+from typing import List
 import tensorflow as tf
 
 from tensorflow.python.framework import ops
-# from tensorflow.python.ops import array_ops
-# from tensorflow.python.ops import gen_array_ops
-# from tensorflow.python.ops import gen_math_ops
-# from tensorflow.python.ops import gen_nn_ops
-# from tensorflow.python.ops import math_ops
-# from tensorflow.python.ops import nn_ops
-# from tensorflow.python.ops import sparse_ops
-# from tensorflow.python.ops import special_math_ops
 
 __all__ = ["avg_voxelize_forward"]
+
 
 library_file_path = str((Path(__file__).parent / "_avg_vox_ops.so").resolve())
 avg_vox_ops = tf.load_op_library(library_file_path)
 avg_voxelize_forward = avg_vox_ops.avg_vox_forward
-# avg_voxelize_backward = avg_vox_ops.avg_vox_backward
+avg_voxelize_backward = avg_vox_ops.avg_vox_backward
+
 
 @ops.RegisterGradient("AvgVoxForward")
-def _avg_vox_grad(op, grad):
+def _avg_vox_grad(op: tf.Operation, grad: List[tf.Tensor]) -> List[tf.Tensor]:
   """The gradients for the `avg_vox` op.
 
   Args:
@@ -44,12 +39,9 @@ def _avg_vox_grad(op, grad):
     grad: Gradient with respect to the output of the `avg_vox` op.
 
   Returns:
-    Gradients with respect to the input of `avg_vox`.
+    Gradients with respect to the input of `avg_vox` for the `out` output.
   """
-#   to_zero = op.inputs[0]
-#   shape = array_ops.shape(to_zero)
-#   index = array_ops.zeros_like(shape)
-#   first_grad = array_ops.reshape(grad, [-1])[0]
-#   to_zero_grad = sparse_ops.sparse_to_dense([index], shape, first_grad, 0)
-#   return [to_zero_grad]  # List of one Tensor, since we have one input
-  return [None]
+  _, ind, cnt = op.outputs
+  out_grad = grad[0]
+  features_grad = avg_voxelize_backward(out_grad, ind, cnt)
+  return [features_grad, None, None]
