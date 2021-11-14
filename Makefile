@@ -47,5 +47,11 @@ $(DEVOX_TARGET_LIB): $(DEVOX_CPP_SRCS) $(DEVOX_GPU_ONLY_TARGET_LIB)
 devox_test: trilinear_devox/python/ops/trilinear_devox_ops_test.py trilinear_devox/python/ops/trilinear_devox_ops.py $(DEVOX_TARGET_LIB)
 	$(PYTHON_BIN_PATH) trilinear_devox/python/ops/trilinear_devox_ops_test.py
 
+clean_vox:
+	rm -f $(VOX_GPU_ONLY_TARGET_LIB) $(VOX_TARGET_LIB)
+
+clean_devox:
+	rm -f $(DEVOX_GPU_ONLY_TARGET_LIB) $(DEVOX_TARGET_LIB) 
+
 clean:
 	rm -f $(VOX_GPU_ONLY_TARGET_LIB) $(VOX_TARGET_LIB) $(DEVOX_GPU_ONLY_TARGET_LIB) $(DEVOX_TARGET_LIB) 

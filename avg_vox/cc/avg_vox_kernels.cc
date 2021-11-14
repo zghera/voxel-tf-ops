@@ -41,7 +41,10 @@ REGISTER_OP("AvgVoxForward")
       c->set_output(2, c->Matrix(c->Dim(features,0), r3));
 
       return Status::OK();
-});
+    })
+    .Doc(R"doc(
+      Average voxelization operation forward pass.
+    )doc");
 
 void AvgVoxForwardKernelLauncher(const GPUDevice& d,
     int b, int c, int n, int r, int r2, int r3,
@@ -114,7 +117,10 @@ REGISTER_OP("AvgVoxBackward")
       c->set_output(0, grad_dx_shape);
 
       return Status::OK();
-});
+    })
+    .Doc(R"doc(
+      Average voxelization operation backward pass.
+    )doc");
 
 void AvgVoxBackwardKernelLauncher(const GPUDevice& d,
     int b, int c, int n, int r3,
