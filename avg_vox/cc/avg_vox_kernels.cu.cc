@@ -21,7 +21,7 @@ typedef Eigen::GpuDevice GPUDevice;
     coords : coords of each point, IntTensor[b, 3, n]
     ind    : voxel index of each point, IntTensor[b, n]
     cnt    : #points in each voxel index, IntTensor[b, s]
-  Note: Slight adaptation from original implementation.
+  Note: Slight adaptation from original implementation. See inline comment.
 */
 __global__ void GridStatsKernel(int b, int n, int r, int r2, int r3,
                                 const int* coords, int* ind, int* cnt) {
@@ -34,6 +34,9 @@ __global__ void GridStatsKernel(int b, int n, int r, int r2, int r3,
 
   for (int i = index; i < n; i += stride) {
     ind[i] = coords[i] * r2 + coords[i + n] * r + coords[i + n + n];
+    // In the event where the resolution is small relative to point coordinates,
+    // we end up with points with voxel indices greater than r3 (i.e. array out
+    // of bounds error).
     if (ind[i] < r3) {
       atomicAdd(cnt + ind[i], 1);
     }

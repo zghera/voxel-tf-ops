@@ -13,6 +13,12 @@ class AvgVoxTest(tf.test.TestCase):
   N = 4
   R = 4
 
+  # Note: We only see 1, and 2, 3 in `out` because of the "clipping" that was
+  #       added in GridStatsKernel. More specifically, the equation for
+  #       calculating a point's voxel index may give a voxel index greater
+  #       than R**3 (point (4,4,4) in this case). If that occurs, we do not
+  #       increment the element in `cnt` corresponding to that voxel. Thus, we
+  #       do not see the corresponding feature for that point in `out`.
   def test_avg_voxelize_forward(self):
     # fmt: off
     with tf.device("/device:GPU:0"):
