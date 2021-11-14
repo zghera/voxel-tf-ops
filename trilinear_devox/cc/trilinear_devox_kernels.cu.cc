@@ -56,9 +56,10 @@ void TrilinearDevoxForwardKernelLauncher(const GPUDevice& d,
   cudaMemset(weights, 0, b*8*sizeof(weights));
   cudaMemset(outputs, 0, b*c*n*sizeof(outputs));
 
-  TF_CHECK_OK(TrilinearDevoxForwardKernel(GridStatsKernel,
+  TF_CHECK_OK(GpuLaunchKernel(TrilinearDevoxForwardKernel,
       b, optimal_num_threads(n), 0, d.stream(),
-      b, c, n, r, r2, r3, coords, features, indices, weights, outputs));
+      b, c, n, r, r2, r3, is_training,
+      coords, features, indices, weights, outputs));
 }
 
 void TrilinearDevoxBackwardKernelLauncher(const GPUDevice& d,

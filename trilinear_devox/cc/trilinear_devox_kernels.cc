@@ -31,15 +31,18 @@ REGISTER_OP("TrilinearDevoxForward")
 
       // Specifying output shapes
       ShapeHandle outputs_shape = c->MakeShape(
-          {c->Dim(features,0), c->Dim(features,1), c->Dim(coords,2)}));
-      ShapeHandle indices_shape = c->MakeShape(
-        {c->Dim(features,0), 8, c->Dim(coords,2)}));
+          {c->Dim(features,0), c->Dim(features,1), c->Dim(coords,2)});
+      ShapeHandle indices_and_weights_shape = c->MakeShape(
+          {c->Dim(features,0), 8, c->Dim(coords,2)});
       c->set_output(0, outputs_shape);
-      c->set_output(1, indices_shape);
-      c->set_output(2, indices_shape);
+      c->set_output(1, indices_and_weights_shape);
+      c->set_output(2, indices_and_weights_shape);
 
       return Status::OK();
-});
+    })
+    .Doc(R"doc(
+      Trilinear devoxelization operation forward pass.
+    )doc");
 
 void TrilinearDevoxForwardKernelLauncher(const GPUDevice& d,
     int b, int c, int n, int r, int r2, int r3, bool is_training,
@@ -85,7 +88,7 @@ class TrilinearDevoxForwardOp : public OpKernel {
     TrilinearDevoxForwardKernelLauncher(context->eigen_device<GPUDevice>(),
         batches, channels, num_points, resolution_, r2, r3, is_training_,
         coords.flat<float>().data(), features.flat<float>().data(),
-        indices->flat<float>().data(), weights->flat<int32>().data(),
+        indices->flat<int32>().data(), weights->flat<float>().data(),
         outputs->flat<float>().data() );
   }
 };
@@ -122,11 +125,14 @@ REGISTER_OP("TrilinearDevoxBackward")
       c->set_output(0, grad_dx_shape);
 
       return Status::OK();
-});
+    })
+    .Doc(R"doc(
+      Trilinear devoxelization operation backward pass.
+    )doc");
 
 void TrilinearDevoxBackwardKernelLauncher(const GPUDevice& d,
     int b, int c, int n, int r3, const int* indices, const float* weights,
-    const float* grad_dy, float* grad_dx) {
+    const float* grad_dy, float* grad_dx);
 
 // OpKernel definition.
 class TrilinearDevoxBackwardOp : public OpKernel {
@@ -159,7 +165,7 @@ class TrilinearDevoxBackwardOp : public OpKernel {
     // Do the computation.
     TrilinearDevoxBackwardKernelLauncher(context->eigen_device<GPUDevice>(),
         batches, channels, num_points, r3,
-        indices.flat<int32>().data(), weights.flat<int32>().data(),
+        indices.flat<int32>().data(), weights.flat<float>().data(),
         grad_dy.flat<float>().data(), grad_dx->flat<float>().data() );
   }
 };

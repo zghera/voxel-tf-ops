@@ -14,6 +14,11 @@ except ImportError:
 
 
 class TrilinearDevoxTest(tf.test.TestCase):
+  B = 2
+  C = 5
+  N = 4
+  R = 4
+
   def test_trilinear_devoxelize_forward(self):
     # fmt: off
     with tf.device("/device:GPU:0"):
