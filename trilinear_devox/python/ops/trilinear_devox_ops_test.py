@@ -17,21 +17,21 @@ class TrilinearDevoxTest(tf.test.TestCase):
   B = 2
   C = 5
   N = 4
-  R = 5#4
+  R = 5  # 4
 
   # Note: We use R=5 rather than R=4 like in the avg_vox tests because of an
-  #       issue in the backwards output (gradients of features/input). 
+  #       issue in the backwards output (gradients of features/input).
   #
   #       For the forward pass, the output is as expected (see below).
   #       Note that we see 0 rather than 4 (i.e. expected_outs=[[[1,2,3,4]]]])
   #       in `outs` because of the "clipping" when creating `cnt`. For more
-  #       information, see avg_vox/cc/avg_vox_kernels.cu.cc|GridStatsKernel 
+  #       information, see avg_vox/cc/avg_vox_kernels.cu.cc|GridStatsKernel
   #       or the avg_vox tests.
   #
   #       However, for the backwards pass, there was an inconsistency in the
   #       1st channel of the 1st batch where all channels of each batch should
   #       have the exact same R**3 values. Specifically, this was the 1st batch
-  #       for features_grad: 
+  #       for features_grad:
   #      [[[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   #         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.05,
   #         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1],
