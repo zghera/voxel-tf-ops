@@ -4,6 +4,7 @@
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/util/gpu_kernel_helper.h"
+#include <sys/time.h>
 
 #include "../../utils/utils.cuh"
 
@@ -124,6 +125,45 @@ __global__ void TrilinearDevoxForwardKernel(int b, int c, int n, int r,
 __global__ void TrilinearDevoxBackwardKernel(int b, int c, int n, int r3,
                                       const int* inds, const float* wgts,
                                       const float* grad_y, float* grad_x) {
+  int batch_index = blockIdx.x;
+  int stride = blockDim.x;
+  int index = threadIdx.x;
+  inds += batch_index * n * 8;
+  wgts += batch_index * n * 8;
+  grad_x += batch_index * c * r3;
+  grad_y += batch_index * c * n;
+
+  for (int i = index; i < n; i += stride) {
+    int idx000 = inds[i];
+    int idx001 = inds[i + n];
+    int idx010 = inds[i + n * 2];
+    int idx011 = inds[i + n * 3];
+    int idx100 = inds[i + n * 4];
+    int idx101 = inds[i + n * 5];
+    int idx110 = inds[i + n * 6];
+    int idx111 = inds[i + n * 7];
+    float wgt000 = wgts[i];
+    float wgt001 = wgts[i + n];
+    float wgt010 = wgts[i + n * 2];
+    float wgt011 = wgts[i + n * 3];
+    float wgt100 = wgts[i + n * 4];
+    float wgt101 = wgts[i + n * 5];
+    float wgt110 = wgts[i + n * 6];
+    float wgt111 = wgts[i + n * 7];
+
+    for (int j = 0; j < c; j++) {
+      int jr3 = j * r3;
+      float g = grad_y[j * n + i];
+      atomicAdd(grad_x + jr3 + idx000, wgt000 * g);
+      atomicAdd(grad_x + jr3 + idx001, wgt001 * g);
+      atomicAdd(grad_x + jr3 + idx010, wgt010 * g);
+      atomicAdd(grad_x + jr3 + idx011, wgt011 * g);
+      atomicAdd(grad_x + jr3 + idx100, wgt100 * g);
+      atomicAdd(grad_x + jr3 + idx101, wgt101 * g);
+      atomicAdd(grad_x + jr3 + idx110, wgt110 * g);
+      atomicAdd(grad_x + jr3 + idx111, wgt111 * g);
+    }
+  }
 }
 
 void TrilinearDevoxForwardKernelLauncher(const GPUDevice& d,
