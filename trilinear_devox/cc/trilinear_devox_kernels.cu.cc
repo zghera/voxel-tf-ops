@@ -26,9 +26,87 @@ typedef Eigen::GpuDevice GPUDevice;
     outs   : outputs, FloatTensor[b, c, n]
   Note: 
 */
-__global__ void TrilinearDevoxForwardKernel(
-  int b, int c, int n, int r, int r2, int r3, bool is_training,
-  const float* coords, const float* feat, int* inds, float* wgts, float* outs) {
+__global__ void TrilinearDevoxForwardKernel(int b, int c, int n, int r,
+                                            int r2, int r3, bool is_training, 
+                                      const float* coords, const float* feat,
+                                         int* inds, float* wgts, float* outs) {
+  int batch_index = blockIdx.x;
+  int stride = blockDim.x;
+  int index = threadIdx.x;
+  coords += batch_index * n * 3;
+  inds += batch_index * n * 8;
+  wgts += batch_index * n * 8;
+  feat += batch_index * c * r3;
+  outs += batch_index * c * n;
+
+  for (int i = index; i < n; i += stride) {
+    float x = coords[i];
+    float y = coords[i + n];
+    float z = coords[i + n + n];
+    float x_lo_f = floorf(x);
+    float y_lo_f = floorf(y);
+    float z_lo_f = floorf(z);
+
+    float x_d_1 = x - x_lo_f; // / (x_hi_f - x_lo_f + 1e-8f)
+    float y_d_1 = y - y_lo_f;
+    float z_d_1 = z - z_lo_f;
+    float x_d_0 = 1.0f - x_d_1;
+    float y_d_0 = 1.0f - y_d_1;
+    float z_d_0 = 1.0f - z_d_1;
+
+    float wgt000 = x_d_0 * y_d_0 * z_d_0;
+    float wgt001 = x_d_0 * y_d_0 * z_d_1;
+    float wgt010 = x_d_0 * y_d_1 * z_d_0;
+    float wgt011 = x_d_0 * y_d_1 * z_d_1;
+    float wgt100 = x_d_1 * y_d_0 * z_d_0;
+    float wgt101 = x_d_1 * y_d_0 * z_d_1;
+    float wgt110 = x_d_1 * y_d_1 * z_d_0;
+    float wgt111 = x_d_1 * y_d_1 * z_d_1;
+
+    int x_lo = static_cast<int>(x_lo_f);
+    int y_lo = static_cast<int>(y_lo_f);
+    int z_lo = static_cast<int>(z_lo_f);
+    int x_hi = (x_d_1 > 0) ? -1 : 0;
+    int y_hi = (y_d_1 > 0) ? -1 : 0;
+    int z_hi = (z_d_1 > 0) ? 1 : 0;
+
+    int idx000 = x_lo * r2 + y_lo * r + z_lo;
+    int idx001 = idx000 + z_hi;      // x_lo * r2 + y_lo * r + z_hi;
+    int idx010 = idx000 + (y_hi & r);  // x_lo * r2 + y_hi * r + z_lo;
+    int idx011 = idx010 + z_hi;      // x_lo * r2 + y_hi * r + z_hi;
+    int idx100 = idx000 + (x_hi & r2); // x_hi * r2 + y_lo * r + z_lo;
+    int idx101 = idx100 + z_hi;      // x_hi * r2 + y_lo * r + z_hi;
+    int idx110 = idx100 + (y_hi & r);  // x_hi * r2 + y_hi * r + z_lo;
+    int idx111 = idx110 + z_hi;      // x_hi * r2 + y_hi * r + z_hi;
+
+    if (is_training) {
+      wgts[i] = wgt000;
+      wgts[i + n] = wgt001;
+      wgts[i + n * 2] = wgt010;
+      wgts[i + n * 3] = wgt011;
+      wgts[i + n * 4] = wgt100;
+      wgts[i + n * 5] = wgt101;
+      wgts[i + n * 6] = wgt110;
+      wgts[i + n * 7] = wgt111;
+      inds[i] = idx000;
+      inds[i + n] = idx001;
+      inds[i + n * 2] = idx010;
+      inds[i + n * 3] = idx011;
+      inds[i + n * 4] = idx100;
+      inds[i + n * 5] = idx101;
+      inds[i + n * 6] = idx110;
+      inds[i + n * 7] = idx111;
+    }
+
+    for (int j = 0; j < c; j++) {
+      int jr3 = j * r3;
+      outs[j * n + i] =
+          wgt000 * feat[jr3 + idx000] + wgt001 * feat[jr3 + idx001] +
+          wgt010 * feat[jr3 + idx010] + wgt011 * feat[jr3 + idx011] +
+          wgt100 * feat[jr3 + idx100] + wgt101 * feat[jr3 + idx101] +
+          wgt110 * feat[jr3 + idx110] + wgt111 * feat[jr3 + idx111];
+    }
+  }
 }
 
 /*Function: Trilinear devoxlization (backward).
@@ -44,17 +122,17 @@ __global__ void TrilinearDevoxForwardKernel(
   Note: Same as the original implementation.
 */
 __global__ void TrilinearDevoxBackwardKernel(int b, int c, int n, int r3,
-                                    const int* inds, const float* wgts,
-                                    const float* grad_y, float* grad_x) {
+                                      const int* inds, const float* wgts,
+                                      const float* grad_y, float* grad_x) {
 }
 
 void TrilinearDevoxForwardKernelLauncher(const GPUDevice& d,
     int b, int c, int n, int r, int r2, int r3, bool is_training,
     const float* coords, const float* features,
     int* indices, float* weights, float* outputs) {
-  cudaMemset(indices, 0, b*8*n*sizeof(indices));
-  cudaMemset(weights, 0, b*8*sizeof(weights));
-  cudaMemset(outputs, 0, b*c*n*sizeof(outputs));
+  // cudaMemset(indices, 0, b*8*n*sizeof(indices));
+  // cudaMemset(weights, 0, b*8*sizeof(weights));
+  // cudaMemset(outputs, 0, b*c*n*sizeof(outputs));
 
   TF_CHECK_OK(GpuLaunchKernel(TrilinearDevoxForwardKernel,
       b, optimal_num_threads(n), 0, d.stream(),
