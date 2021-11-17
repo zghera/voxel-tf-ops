@@ -22,24 +22,27 @@ REGISTER_OP("TrilinearDevoxForward")
     .Output("outputs: float")
     .Output("indices: int32")
     .Output("weights: float")
-    .SetShapeFn([](InferenceContext* c) {
-      // Input rank assertions
-      ShapeHandle features;
-      ShapeHandle coords;
-      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &features));
-      TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 3, &coords));
+    // TODO: Resolve AvgVoxForward SetShapeFn issue before using SetShapeFn.
+    // ------------------------------------------------------------------------
+    // .SetShapeFn([](InferenceContext* c) {
+    //   // Input rank assertions
+    //   ShapeHandle features;
+    //   ShapeHandle coords;
+    //   TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &features));
+    //   TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 3, &coords));
 
-      // Specifying output shapes
-      ShapeHandle outputs_shape = c->MakeShape(
-          {c->Dim(features,0), c->Dim(features,1), c->Dim(coords,2)});
-      ShapeHandle indices_and_weights_shape = c->MakeShape(
-          {c->Dim(features,0), 8, c->Dim(coords,2)});
-      c->set_output(0, outputs_shape);
-      c->set_output(1, indices_and_weights_shape);
-      c->set_output(2, indices_and_weights_shape);
+    //   // Specifying output shapes
+    //   ShapeHandle outputs_shape = c->MakeShape(
+    //       {c->Dim(features,0), c->Dim(features,1), c->Dim(coords,2)});
+    //   ShapeHandle indices_and_weights_shape = c->MakeShape(
+    //       {c->Dim(features,0), 8, c->Dim(coords,2)});
+    //   c->set_output(0, outputs_shape);
+    //   c->set_output(1, indices_and_weights_shape);
+    //   c->set_output(2, indices_and_weights_shape);
 
-      return Status::OK();
-    })
+    //   return Status::OK();
+    // })
+    // ------------------------------------------------------------------------
     .Doc(R"doc(
       Trilinear devoxelization operation forward pass.
     )doc");
@@ -107,25 +110,28 @@ REGISTER_OP("TrilinearDevoxBackward")
     .Input("weights: float")
     .Attr("resolution: int")
     .Output("grad_dx: float")
-    .SetShapeFn([](InferenceContext* c) {
-      // Input rank assertions
-      ShapeHandle input;
-      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &input));
-      TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 3, &input));
-      TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 3, &input));
+    // TODO: Resolve AvgVoxForward SetShapeFn issue before using SetShapeFn.
+    // ------------------------------------------------------------------------
+    // .SetShapeFn([](InferenceContext* c) {
+    //   // Input rank assertions
+    //   ShapeHandle input;
+    //   TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &input));
+    //   TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 3, &input));
+    //   TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 3, &input));
 
-      // Get (resolution ** 3) to set output shapes
-      int resolution;
-      TF_RETURN_IF_ERROR(c->GetAttr("resolution", &resolution));
-      int r3 = resolution * resolution * resolution;
+    //   // Get (resolution ** 3) to set output shapes
+    //   int resolution;
+    //   TF_RETURN_IF_ERROR(c->GetAttr("resolution", &resolution));
+    //   int r3 = resolution * resolution * resolution;
 
-      // Specifying output shapes
-      ShapeHandle grad_dx_shape = c->MakeShape({
-        c->Dim(c->input(0),0), c->Dim(c->input(0),1), r3});
-      c->set_output(0, grad_dx_shape);
+    //   // Specifying output shapes
+    //   ShapeHandle grad_dx_shape = c->MakeShape({
+    //     c->Dim(c->input(0),0), c->Dim(c->input(0),1), r3});
+    //   c->set_output(0, grad_dx_shape);
 
-      return Status::OK();
-    })
+    //   return Status::OK();
+    // })
+    // ------------------------------------------------------------------------
     .Doc(R"doc(
       Trilinear devoxelization operation backward pass.
     )doc");
