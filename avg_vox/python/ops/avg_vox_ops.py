@@ -17,19 +17,19 @@ avg_voxelize_backward = avg_vox_ops.avg_vox_backward
 
 @ops.RegisterGradient("AvgVoxForward")
 def _avg_vox_grad(
-  op: tf.Operation, grad: List[tf.Tensor]
+  op: tf.Operation, *grads: tf.Tensor
 ) -> List[Optional[tf.Tensor]]:
   """The gradients for the `avg_vox` op.
 
   Args:
     op: The `avg_vox` `Operation` that we are differentiating, which we can use
       to find the inputs and outputs of the original op.
-    grad: Gradient with respect to the output of the `avg_vox` op.
+    grads: Gradients with respect to the outputs of the `avg_vox` op.
 
   Returns:
-    Gradients with respect to the input of `avg_vox`.
+    Gradients with respect to the inputs of `avg_vox`.
   """
   _, ind, cnt = op.outputs
-  out_grad = grad[0]
+  out_grad = grads[0]
   input_grad = avg_voxelize_backward(out_grad, ind, cnt)
   return [input_grad, None]
