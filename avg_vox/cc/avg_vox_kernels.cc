@@ -21,34 +21,26 @@ REGISTER_OP("AvgVoxForward")
     .Output("out: float")
     .Output("ind: int32")
     .Output("cnt: int32")
-    // TODO: Determine why this shape function was throwing following error:
-    // ValueError: Shape must be rank 0 but is rank 1250256272 for 
-    //   '{{node pvcnn/point_features_branch/pv_conv/voxelization/AvgVoxForward}} = 
-    //   AvgVoxForward[resolution=32](sample, pvcnn/point_features_branch/pv_conv/voxelization/Cast)'
-    //   with input shapes: [64,9,4096], [64,3,4096].
-    // ------------------------------------------------------------------------
-    // .SetShapeFn([](InferenceContext* c) {
-    //   // Input rank assertions
-    //   ShapeHandle features;
-    //   ShapeHandle coords;
-    //   TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &features));
-    //   TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 3, &coords));
+    .SetShapeFn([](InferenceContext* c) {
+      // Input rank assertions
+      ShapeHandle input;
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &input));
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 3, &input));
 
-    //   // Get (resolution ** 3) to set some of the output shapes
-    //   int resolution;
-    //   TF_RETURN_IF_ERROR(c->GetAttr("resolution", &resolution));
-    //   int r3 = resolution * resolution * resolution;
+      // Get (resolution ** 3) to set some of the output shapes
+      int resolution;
+      TF_RETURN_IF_ERROR(c->GetAttr("resolution", &resolution));
+      int r3 = resolution * resolution * resolution;
 
-    //   // Specifying output shapes
-    //   ShapeHandle out_shape = c->MakeShape(
-    //       {c->Dim(features,0), c->Dim(features,1), r3});
-    //   c->set_output(0, out_shape);
-    //   c->set_output(1, c->Matrix(c->Dim(features,0), c->Dim(features,2)));
-    //   c->set_output(2, c->Matrix(c->Dim(features,0), r3));
+      // Specifying output shapes
+      ShapeHandle out_shape = c->MakeShape(
+          {c->Dim(c->input(0),0), c->Dim(c->input(0),1), r3});
+      c->set_output(0, out_shape);
+      c->set_output(1, c->Matrix(c->Dim(c->input(0),0), c->Dim(c->input(0),2)));
+      c->set_output(2, c->Matrix(c->Dim(c->input(0),0), r3));
 
-    //   return Status::OK();
-    // })
-    // ------------------------------------------------------------------------
+      return Status::OK();
+    })
     .Doc(R"doc(
       Average voxelization operation forward pass.
     )doc");
@@ -111,23 +103,20 @@ REGISTER_OP("AvgVoxBackward")
     .Input("ind: int32")
     .Input("cnt: int32")
     .Output("grad_dx: float")
-    // TODO: Resolve AvgVoxForward SetShapeFn issue before using SetShapeFn.
-    // ------------------------------------------------------------------------
-    // .SetShapeFn([](InferenceContext* c) {
-    //   // Input rank assertions
-    //   ShapeHandle input;
-    //   TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &input));
-    //   TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 2, &input));
-    //   TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 2, &input));
+    .SetShapeFn([](InferenceContext* c) {
+      // Input rank assertions
+      ShapeHandle input;
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 3, &input));
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 2, &input));
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 2, &input));
 
-    //   // Specifying output shapes
-    //   ShapeHandle grad_dx_shape = c->MakeShape({
-    //     c->Dim(c->input(0),0), c->Dim(c->input(0),1), c->Dim(c->input(1),1)});
-    //   c->set_output(0, grad_dx_shape);
+      // Specifying output shapes
+      ShapeHandle grad_dx_shape = c->MakeShape({
+        c->Dim(c->input(0),0), c->Dim(c->input(0),1), c->Dim(c->input(1),1)});
+      c->set_output(0, grad_dx_shape);
 
-    //   return Status::OK();
-    // })
-    // ------------------------------------------------------------------------
+      return Status::OK();
+    })
     .Doc(R"doc(
       Average voxelization operation backward pass.
     )doc");
